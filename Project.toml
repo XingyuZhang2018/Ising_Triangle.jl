@@ -1,0 +1,13 @@
+name = "Ising_Triangle"
+uuid = "52299fc4-a436-4969-84e9-47379992517c"
+authors = ["XingyuZhang2018 <zhangxingyu@iphy.ac.cn> and contributors"]
+version = "0.1.0"
+
+[compat]
+julia = "1.7"
+
+[extras]
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["Test"]
