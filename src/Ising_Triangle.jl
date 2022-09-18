@@ -1,5 +1,6 @@
 module Ising_Triangle
 
-# Write your package code here.
+include("exampletensors.jl")
+include("exampleobs.jl")
 
 end
