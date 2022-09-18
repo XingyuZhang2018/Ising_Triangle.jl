@@ -43,7 +43,7 @@ end
     env = obs_env(M; χ = 20, maxiter = 10, miniter = 1, 
          infolder = "./example/data/$model/", 
         outfolder = "./example/data/$model/", 
-        updown = false, verbose = true, savefile = false
+        updown = updown, verbose = true, savefile = false
         )
     @show observable(env, model, Val(:Z)     )
     @show observable(env, model, Val(:energy)) 
