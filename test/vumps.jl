@@ -39,6 +39,21 @@ end
     @show observable(env, model, Val(:energy)) 
 end
 
+@testset "$(Ni)x$(Nj) Ising_Triangle_bad2 Z and energy with $atype $updown updown" for Ni = [1], Nj = [1], updown = [false, true], atype = [Array]
+    Random.seed!(100)
+    β = 1
+    model = Ising_Triangle_bad2(Ni, Nj, β)
+    M = atype(model_tensor(model, Val(:bulk)))
+    env = obs_env(M; χ = 20, maxiter = 10, miniter = 1, 
+         infolder = "./example/data/$model/", 
+        outfolder = "./example/data/$model/", 
+        updown = updown, verbose = true, savefile = false
+        )
+
+    @show updown_overlap(env)
+    @show observable(env, model, Val(:Z)     )
+end
+
 @testset "$(Ni)x$(Nj) Ising_Triangle_good Z and energy with $atype $updown updown" for Ni = [1], Nj = [1], updown = [false, true], atype = [Array]
     Random.seed!(100)
     β = 1
@@ -59,6 +74,21 @@ end
     Random.seed!(100)
     β = 100
     model = Ising_Triangle_bad(Ni, Nj, β)
+    M = atype(model_tensor(model, Val(:Sbulk)))
+    env = obs_env(M; χ = 20, maxiter = 50, miniter = 1, 
+         infolder = "./example/data/$model/", 
+        outfolder = "./example/data/$model/", 
+        updown = updown, verbose = true, savefile = false
+        )
+
+    @show updown_overlap(env)
+    @show observable(env, model, Val(:S)) - 0.3230659669
+end
+
+@testset "$(Ni)x$(Nj) Ising_Triangle_bad2 residual entropy with $atype $updown updown" for Ni = [1], Nj = [1], updown = [false, true], atype = [Array]
+    Random.seed!(100)
+    β = 100
+    model = Ising_Triangle_bad2(Ni, Nj, β)
     M = atype(model_tensor(model, Val(:Sbulk)))
     env = obs_env(M; χ = 20, maxiter = 50, miniter = 1, 
          infolder = "./example/data/$model/", 

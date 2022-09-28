@@ -8,7 +8,7 @@ const isingβc = log(1+sqrt(2))/2
 
 abstract type HamiltonianModel end
 
-export Ising, Ising_Triangle_bad, Ising_Triangle_good
+export Ising, Ising_Triangle_bad, Ising_Triangle_bad2, Ising_Triangle_good
 export model_tensor
 
 struct Ising <: HamiltonianModel 
@@ -23,6 +23,11 @@ struct Ising_Triangle_bad <: HamiltonianModel
     β::Float64
 end
 
+struct Ising_Triangle_bad2 <: HamiltonianModel 
+    Ni::Int
+    Nj::Int
+    β::Float64
+end
 struct Ising_Triangle_good <: HamiltonianModel 
     Ni::Int
     Nj::Int
@@ -63,6 +68,20 @@ function model_tensor(model::Ising_Triangle_bad, ::Val{:bulk})
     return copy(M)
 end
 
+function model_tensor(model::Ising_Triangle_bad2, ::Val{:bulk})
+    Ni, Nj, β = model.Ni, model.Nj, model.β
+    ham = Zygote.@ignore -ones(ComplexF64, 2,2,2)
+    ham[1,1,1] = ham[2,2,2] = 3
+    w = exp.(- β * ham)
+
+    m = reshape(ein"ijk,kl,nl,ml->ijnm"(w,I(2),I(2),I(2)),2,2,2,2)
+    M = Zygote.Buffer(m, 2,2,2,2,Ni,Nj)
+    @inbounds @views for j = 1:Nj,i = 1:Ni
+        M[:,:,:,:,i,j] = m
+    end
+    return copy(M)
+end
+
 """
     residual entropy
 """
@@ -73,6 +92,20 @@ function model_tensor(model::Ising_Triangle_bad, ::Val{:Sbulk})
 
     m = reshape(ein"mi,mj,mk,ml,mn,mo,qp->ijklponq"(I(2),I(2),I(2),I(2),w,w,w),4,4,4,4)
     M = Zygote.Buffer(m, 4,4,4,4,Ni,Nj)
+    @inbounds @views for j = 1:Nj,i = 1:Ni
+        M[:,:,:,:,i,j] = m
+    end
+    return copy(M)
+end
+
+function model_tensor(model::Ising_Triangle_bad2, ::Val{:Sbulk})
+    Ni, Nj, β = model.Ni, model.Nj, model.β
+    ham = Zygote.@ignore zeros(ComplexF64, 2,2,2)
+    ham[1,1,1] = ham[2,2,2] = 4
+    w = exp.(- β * ham)
+
+    m = reshape(ein"ijk,kl,nl,ml->ijnm"(w,I(2),I(2),I(2)),2,2,2,2)
+    M = Zygote.Buffer(m, 2,2,2,2,Ni,Nj)
     @inbounds @views for j = 1:Nj,i = 1:Ni
         M[:,:,:,:,i,j] = m
     end
