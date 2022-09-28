@@ -63,9 +63,42 @@ function model_tensor(model::Ising_Triangle_bad, ::Val{:bulk})
     return copy(M)
 end
 
+"""
+    residual entropy
+"""
+function model_tensor(model::Ising_Triangle_bad, ::Val{:Sbulk})
+    Ni, Nj, β = model.Ni, model.Nj, model.β
+    ham = Zygote.@ignore ComplexF64[4/3. -2/3;-2/3 4/3]
+    w = exp.(- β * ham)
+
+    m = reshape(ein"mi,mj,mk,ml,mn,mo,qp->ijklponq"(I(2),I(2),I(2),I(2),w,w,w),4,4,4,4)
+    M = Zygote.Buffer(m, 4,4,4,4,Ni,Nj)
+    @inbounds @views for j = 1:Nj,i = 1:Ni
+        M[:,:,:,:,i,j] = m
+    end
+    return copy(M)
+end
+
 function model_tensor(model::Ising_Triangle_good, ::Val{:bulk})
     Ni, Nj, β = model.Ni, model.Nj, model.β
     ham = Zygote.@ignore ComplexF64[1. -1;-1 1]
+    w1 = exp.(- β * ham)
+    w2 = exp.(- β * ham/2)
+
+    m = reshape(ein"im,in,jo,jp,kq,kr,ls,lt,ik,kl,lj,ji,il->mqrsptno"(I(2),I(2),I(2),I(2),I(2),I(2),I(2),I(2),w2,w2,w2,w2,w1),4,4,4,4)
+    M = Zygote.Buffer(m, 4,4,4,4,Ni,Nj)
+    @inbounds @views for j = 1:Nj,i = 1:Ni
+        M[:,:,:,:,i,j] = m
+    end
+    return copy(M)
+end
+
+"""
+    residual entropy
+"""
+function model_tensor(model::Ising_Triangle_good, ::Val{:Sbulk})
+    Ni, Nj, β = model.Ni, model.Nj, model.β
+    ham = Zygote.@ignore ComplexF64[4/3. -2/3;-2/3 4/3]
     w1 = exp.(- β * ham)
     w2 = exp.(- β * ham/2)
 
