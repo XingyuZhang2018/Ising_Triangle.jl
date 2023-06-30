@@ -8,7 +8,7 @@ const isingβc = log(1+sqrt(2))/2
 
 abstract type HamiltonianModel end
 
-export Ising, Ising_Triangle_bad, Ising_Triangle_bad2, Ising_Triangle_good
+export Ising, Ising_Triangle_bad, Ising_Triangle_bad2, Ising_Triangle_good, J1J2_1, J1J2_2
 export model_tensor
 
 struct Ising <: HamiltonianModel 
@@ -34,6 +34,24 @@ struct Ising_Triangle_good <: HamiltonianModel
     β::Float64
 end
 
+struct J1J2_1 <: HamiltonianModel 
+    Ni::Int
+    Nj::Int
+    J1::Float64
+    J2::Float64
+    β::Float64
+end
+
+struct J1J2_2 <: HamiltonianModel 
+    Ni::Int
+    Nj::Int
+    J1::Float64
+    J2::Float64
+    β::Float64
+end
+
+J1J2_1(Ni, Nj, J2, β) = J1J2_1(Ni, Nj, 1.0, J2, β)
+J1J2_2(Ni, Nj, J2, β) = J1J2_2(Ni, Nj, 1.0, J2, β)
 
 """
     model_tensor(model::Ising, type)
@@ -81,6 +99,72 @@ function model_tensor(model::Ising_Triangle_bad2, ::Val{:bulk})
     end
     return copy(M)
 end
+
+function model_tensor(model::J1J2_1, ::Val{:bulk})
+    Ni, Nj, J1, J2, β = model.Ni, model.Nj, model.J1, model.J2, model.β
+    m = Zygote.@ignore zeros(ComplexF64, 2,2,2,2)
+    for i in -1:2:1
+        for j in -1:2:1
+            for k in -1:2:1
+                for l in -1:2:1
+                    x,y,z,w = (i+3)÷2, (j+3)÷2, (k+3)÷2, (l+3)÷2
+                    m[x,y,z,w] += exp(β/2*(i*j+i*l+k*j+k*l)-β*J2/J1*(i*k+j*l))
+                end
+            end
+        end
+    end
+
+    M = Zygote.Buffer(m, 2,2,2,2,Ni,Nj)
+    @inbounds @views for j = 1:Nj,i = 1:Ni
+        M[:,:,:,:,i,j] = m
+    end
+    return copy(M)
+end
+
+function model_tensor(model::J1J2_2, ::Val{:bulk})
+    Ni, Nj, J1, J2, β = model.Ni, model.Nj, model.J1, model.J2, model.β
+    m = Zygote.@ignore zeros(ComplexF64, 4,4,4,4)
+    for i in -1:2:1
+        for j in -1:2:1
+            for k in -1:2:1
+                for l in -1:2:1
+                    a,b,c,d = (i+1)÷2,(j+1)÷2,(k+1)÷2,(l+1)÷2
+                    x,y,z,w = a*2+b+1,b*2+c+1,d*2+c+1,a*2+d+1
+                    m[x,y,z,w] = exp(β/2*(i*j+i*l+k*j+k*l)-β*J2/J1*(i*k+j*l))
+                end
+            end
+        end
+    end
+
+    M = Zygote.Buffer(m, 4,4,4,4,Ni,Nj)
+    @inbounds @views for j = 1:Nj,i = 1:Ni
+        M[:,:,:,:,i,j] = m
+    end
+    return copy(M)
+end
+
+function model_tensor(model::J1J2_2, ::Val{:energy})
+    Ni, Nj, J1, J2, β = model.Ni, model.Nj, model.J1, model.J2, model.β
+    m = Zygote.@ignore zeros(ComplexF64, 4,4,4,4)
+    for i in -1:2:1
+        for j in -1:2:1
+            for k in -1:2:1
+                for l in -1:2:1
+                    a,b,c,d = (i+1)÷2,(j+1)÷2,(k+1)÷2,(l+1)÷2
+                    x,y,z,w = a*2+b+1,b*2+c+1,d*2+c+1,a*2+d+1
+                    m[x,y,z,w] = (-(i*j+i*l+k*j+k*l)/2 + J2/J1*(i*k+j*l)) * exp(β/2*(i*j+i*l+k*j+k*l)-β*J2/J1*(i*k+j*l))
+                end
+            end
+        end
+    end
+
+    M = Zygote.Buffer(m, 4,4,4,4,Ni,Nj)
+    @inbounds @views for j = 1:Nj,i = 1:Ni
+        M[:,:,:,:,i,j] = m
+    end
+    return copy(M)
+end
+
 
 """
     residual entropy

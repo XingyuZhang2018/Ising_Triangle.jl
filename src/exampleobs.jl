@@ -53,25 +53,38 @@ function observable(env, model::MT, ::Val{:S}) where {MT <: HamiltonianModel}
 end
 
 function observable(env, model::MT, type) where {MT <: HamiltonianModel}
-    _, ALu, Cu, ARu, ALd, Cd, ARd, FL, FR, FLu, FRu = env
-    χ,D,Ni,Nj = size(ALu)[[1,2,4,5]]
-    atype = _arraytype(ALu)
-    M     = atype(model_tensor(model, Val(:bulk)))
-    M_obs = atype(model_tensor(model, type      ))
-    obs_tol = 0
-    ACu = ALCtoAC(ALu, Cu)
-    ACd = ALCtoAC(ALd, Cd)
+    if length(env) == 11
+        _, ALu, Cu, ARu, ALd, Cd, ARd, FL, FR, FLu, FRu = env
+        χ,D,Ni,Nj = size(ALu)[[1,2,4,5]]
+        atype = _arraytype(ALu)
+        M     = atype(model_tensor(model, Val(:bulk)))
+        M_obs = atype(model_tensor(model, type      ))
+        obs_tol = 0
+        ACu = ALCtoAC(ALu, Cu)
+        ACd = ALCtoAC(ALd, Cd)
 
-    for j = 1:Nj,i = 1:Ni
-        ir = Ni + 1 - i
-        obs = ein"(((adf,abc),dgeb),fgh),ceh -> "(FL[:,:,:,i,j],ACu[:,:,:,i,j],M_obs[:,:,:,:,i,j],ACd[:,:,:,ir,j],FR[:,:,:,i,j])
-        λ = ein"(((adf,abc),dgeb),fgh),ceh -> "(FL[:,:,:,i,j],ACu[:,:,:,i,j],M[:,:,:,:,i,j],ACd[:,:,:,ir,j],FR[:,:,:,i,j])
-        obs_tol += Array(obs)[]/Array(λ)[]
+        for j = 1:Nj,i = 1:Ni
+            ir = Ni + 1 - i
+            obs = ein"(((adf,abc),dgeb),fgh),ceh -> "(FL[:,:,:,i,j],ACu[:,:,:,i,j],M_obs[:,:,:,:,i,j],ACd[:,:,:,ir,j],FR[:,:,:,i,j])
+            λ = ein"(((adf,abc),dgeb),fgh),ceh -> "(FL[:,:,:,i,j],ACu[:,:,:,i,j],M[:,:,:,:,i,j],ACd[:,:,:,ir,j],FR[:,:,:,i,j])
+            obs_tol += Array(obs)[]/Array(λ)[]
+        end
+        if type == Val(:mag)
+            obs_tol = abs(obs_tol)
+        end
+        return obs_tol/Ni/Nj
+    else
+        M, Au, Ad, FL, FR, _, _  = env
+        χ,D = size(Au)[[1,2]]
+        atype = _arraytype(Au)
+        M     = reshape(atype(model_tensor(model, Val(:bulk))), (D,D,D,D))
+        M_obs = reshape(atype(model_tensor(model, type      )), (D,D,D,D))
+        obs = ein"(((adf,abc),dgeb),ceh),fgh -> "(FL,Au,M_obs,FR,Ad)[]
+        λ = ein"(((adf,abc),dgeb),ceh),fgh -> "(FL,Au,M,FR,Ad)[]
+        obs_tol = obs/λ
+        # @assert imag(obs_tol) < 1e-6
+        return real(obs_tol)
     end
-    if type == Val(:mag)
-        obs_tol = abs(obs_tol)
-    end
-    return obs_tol/Ni/Nj
 end
 
 """
